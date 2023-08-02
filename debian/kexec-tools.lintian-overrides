@@ -1,0 +1,9 @@
+# kexec-tools init scripts need special handling because they alter how system
+# reboots and general rule os special handling required at startup for
+# init scripts that require special handling at shutdown, does not apply
+kexec-tools: init.d-script-possible-missing-stop etc/init.d/kexec 0 1
+kexec-tools: init.d-script-possible-missing-stop etc/init.d/kexec-load 0 1
+# systemd already bundles services files for kexec
+kexec-tools: missing-systemd-service-for-init.d-script kexec [etc/init.d/kexec]
+kexec-tools: missing-systemd-service-for-init.d-script kexec-load [etc/init.d/kexec-load]
+
