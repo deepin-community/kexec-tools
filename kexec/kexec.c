@@ -638,6 +638,21 @@ char *slurp_decompress_file(const char *filename, off_t *r_size)
 	return kernel_buf;
 }
 
+static int copybuf_memfd(const char *kernel_buf, size_t size)
+{
+	int fd, count;
+
+	fd = memfd_create("kernel", MFD_ALLOW_SEALING);
+	if (fd == -1)
+		return fd;
+
+	count = write(fd, kernel_buf, size);
+	if (count < 0)
+		return -1;
+
+	return fd;
+}
+
 static void update_purgatory(struct kexec_info *info)
 {
 	static const uint8_t null_buf[256];
@@ -1049,11 +1064,11 @@ void usage(void)
 	       "                      to original kernel.\n"
 	       " -s, --kexec-file-syscall Use file based syscall for kexec operation\n"
 	       " -c, --kexec-syscall  Use the kexec_load syscall for for compatibility\n"
-	       "                      with systems that don't support -s (default)\n"
+	       "                      with systems that don't support -s\n"
 	       " -a, --kexec-syscall-auto  Use file based syscall for kexec and fall\n"
 	       "                      back to the compatibility syscall when file based\n"
 	       "                      syscall is not supported or the kernel did not\n"
-	       "                      understand the image\n"
+	       "                      understand the image (default)\n"
 	       " -d, --debug          Enable debugging to help spot a failure.\n"
 	       " -S, --status         Return 1 if the type (by default crash) is loaded,\n"
 	       "                      0 if not.\n"
@@ -1095,7 +1110,7 @@ static int k_status(unsigned long kexec_flags)
 /*
  * Remove parameter from a kernel command line. Helper function by get_command_line().
  */
-static void remove_parameter(char *line, const char *param_name)
+void remove_parameter(char *line, const char *param_name)
 {
 	char *start, *end;
 
@@ -1277,6 +1292,7 @@ static int do_kexec_file_load(int fileind, int argc, char **argv,
 	info.kexec_flags = flags;
 
 	info.file_mode = 1;
+	info.kernel_fd = -1;
 	info.initrd_fd = -1;
 
 	if (!is_kexec_file_load_implemented())
@@ -1290,31 +1306,22 @@ static int do_kexec_file_load(int fileind, int argc, char **argv,
 
 	kernel = argv[fileind];
 
-	kernel_fd = open(kernel, O_RDONLY);
-	if (kernel_fd == -1) {
-		fprintf(stderr, "Failed to open file %s:%s\n", kernel,
+	/* slurp in the input kernel */
+	kernel_buf = slurp_decompress_file(kernel, &kernel_size);
+	if (!kernel_buf) {
+		fprintf(stderr, "Failed to decompress file %s:%s\n", kernel,
 				strerror(errno));
 		return EFAILED;
 	}
-
-	/* slurp in the input kernel */
-	kernel_buf = slurp_decompress_file(kernel, &kernel_size);
+	kernel_fd = copybuf_memfd(kernel_buf, kernel_size);
+	if (kernel_fd < 0) {
+		fprintf(stderr, "Failed to copy decompressed buf\n");
+		return EFAILED;
+	}
 
 	for (i = 0; i < file_types; i++) {
-#ifdef __aarch64__
-		/* handle Image.gz like cases */
-		if (is_zlib_file(kernel, &kernel_size)) {
-			if ((ret = file_type[i].probe(kernel, kernel_size)) >= 0) {
-				kernel_fd = ret;
-				break;
-			}
-		} else
-			if (file_type[i].probe(kernel_buf, kernel_size) >= 0)
-				break;
-#else
 		if (file_type[i].probe(kernel_buf, kernel_size) >= 0)
 			break;
-#endif
 	}
 
 	if (i == file_types) {
@@ -1330,6 +1337,13 @@ static int do_kexec_file_load(int fileind, int argc, char **argv,
 		close(kernel_fd);
 		return ret;
 	}
+
+       /*
+	* image type specific load functioin detect the capsule kernel type
+	* and create another fd for file load. For example the zboot kernel.
+	*/
+	if (info.kernel_fd != -1)
+		kernel_fd = info.kernel_fd;
 
 	/*
 	 * If there is no initramfs, set KEXEC_FILE_NO_INITRAMFS flag so that
@@ -1407,8 +1421,8 @@ int main(int argc, char *argv[])
 	int do_ifdown = 0, skip_ifdown = 0;
 	int do_unload = 0;
 	int do_reuse_initrd = 0;
-	int do_kexec_file_syscall = 0;
-	int do_kexec_fallback = 0;
+	int do_kexec_file_syscall = 1;
+	int do_kexec_fallback = 1;
 	int skip_checks = 0;
 	int do_status = 0;
 	void *entry = 0;

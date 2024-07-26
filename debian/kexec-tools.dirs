@@ -1,2 +1,2 @@
-sbin
+usr/sbin
 etc/default/kexec.d

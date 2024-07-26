@@ -34,15 +34,23 @@ update_param() {
 # the debian-policy package
 #
 
+# Handle debconf
+. /usr/share/debconf/confmodule
+
+INITCONFFILE=/etc/default/kexec
+ 
+# We generate several files during the postinst, and we don't want
+#       them to be readable only by root.
+umask 022
+
 case "$1" in
     configure)
-	if [ -L /etc/rc6.d/K39kexec-load ]; then
-	    # remove this old entry, we'll add correct one below
-	    update-rc.d -f kexec-load remove > /dev/null || exit 0
-	fi
     ;;
 
     install|upgrade)
+    ;;
+
+    upgrade)
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
@@ -55,24 +63,12 @@ case "$1" in
     ;;
 esac
 
-# Handle debconf
-. /usr/share/debconf/confmodule
-
-INITCONFFILE=/etc/default/kexec
- 
-# We generate several files during the postinst, and we don't want
-#       them to be readable only by root.
-umask 022
- 
-# Generate configuration file if it does not exist, using default values.
+# Generate configuration file if it does not exist, using
+# default values.
 [ -r "${INITCONFFILE}" ] || {
-        echo Generating ${INITCONFFILE}... >&2
-        cat >${INITCONFFILE} <<'EOFMAGICNUMBER1234'
-# Defaults for kexec initscript
-# sourced by /etc/init.d/kexec and /etc/init.d/kexec-load
-
-# Load a kexec kernel (true/false)
-LOAD_KEXEC=false
+	echo Generating ${INITCONFFILE}... >&2
+	cat >${INITCONFFILE} <<'EOFMAGICNUMBER1234'
+# Defaults for kexec-tools
 
 # Kernel and initrd image
 KERNEL_IMAGE="/vmlinuz"
@@ -94,6 +90,15 @@ if test -z "$USE_GRUB_CONFIG" ; then
 	echo "USE_GRUB_CONFIG=" >> ${INITCONFFILE}
 fi
 
+# Remove discontinued LOAD_KEXEC option
+if test -n "$LOAD_KEXEC" ; then
+	sed -i "s/Defaults for kexec initscript/Defaults for kexec-tools/" ${INITCONFFILE}
+	sed -i "/sourced by/d" ${INITCONFFILE}
+	sed -i "/Load a kexec kernel/d" ${INITCONFFILE}
+	sed -i "/LOAD_KEXEC/d" ${INITCONFFILE}
+	sed -i '/^$/N;/^\n$/D' ${INITCONFFILE}
+fi
+
 # Detect if system is configured to place kernel link under /boot instead of /
 # If yes, update kernel and initrd image locations in config file
 if [ -f /etc/kernel-img.conf ]; then
@@ -113,10 +118,6 @@ fi
 
 # ------------------------- Debconf questions start ---------------------
 
-db_get kexec-tools/load_kexec
-new_LOAD_KEXEC="${RET}"
-update_param LOAD_KEXEC
-
 if [ -d /boot/grub ]
 then
 	db_get kexec-tools/use_grub_config
@@ -132,4 +133,3 @@ update_param USE_GRUB_CONFIG
 #DEBHELPER#
 
 exit 0
-

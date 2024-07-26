@@ -1,7 +1,5 @@
-Index: kexec-tools-2.0.3/README.debian
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ kexec-tools-2.0.3/README.debian	2012-01-31 08:51:26.379799691 -0700
+--- /dev/null
++++ b/README.debian
 @@ -0,0 +1,11 @@
 +This kexec-tools package was built from kexec-tools git repository at
 +<git://git.kernel.org/pub/scm/linux/kernel/git/horms/kexec-tools.git>.

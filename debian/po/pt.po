@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kexec-tools_1-2.0.14-1_pt\n"
 "Report-Msgid-Bugs-To: kexec-tools@packages.debian.org\n"
-"POT-Creation-Date: 2021-07-13 16:56-0600\n"
+"POT-Creation-Date: 2023-10-04 10:16-0600\n"
 "PO-Revision-Date: 2017-03-14 12:08+0000\n"
 "Last-Translator: Rui Branco <ruipb@debianpt.org>\n"
 "Language-Team: Portuguese <traduz@debianpt.org>\n"
@@ -22,33 +22,12 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../kexec-tools.templates:2001
-#, fuzzy
-#| msgid "Should kexec-tools handle reboots (sysvinit only)?"
-msgid "Should kexec-tools handle reboots?"
-msgstr ""
-"Deve o kexec-tools gerir as reiniciações do computador (apenas sysvinit)?"
-
-#. Type: boolean
-#. Description
-#: ../kexec-tools.templates:2001
-msgid ""
-"If you choose this option, a system reboot will trigger a restart into a "
-"kernel loaded by kexec instead of going through the full system boot loader "
-"process."
-msgstr ""
-"Se escolher esta opção, reiniciar o sistema irá carregar um kernel usando o "
-"kexec em vez de passar por todo o processo de reinicio e arranque do "
-"computador."
-
-#. Type: boolean
-#. Description
-#: ../kexec-tools.templates:3001
 msgid "Read GRUB configuration file to load the kernel?"
 msgstr "Ler o ficheiro de configuração do GRUB para carregar o kernel?"
 
 #. Type: boolean
 #. Description
-#: ../kexec-tools.templates:3001
+#: ../kexec-tools.templates:2001
 msgid ""
 "If you choose this option, kexec will read the GRUB configuration file to "
 "determine which kernel and options to load for kexec reboot, as opposed to "
@@ -57,3 +36,18 @@ msgstr ""
 "Se escolher esta opção, o kexec irá ler o ficheiro de configuração do GRUB "
 "de modo a determinar qual o kernel e quais as opções para o reinicio do "
 "kexec, em oposição ao que existe em /etc/default/kexec."
+
+#, fuzzy
+#~| msgid "Should kexec-tools handle reboots (sysvinit only)?"
+#~ msgid "Should kexec-tools handle reboots?"
+#~ msgstr ""
+#~ "Deve o kexec-tools gerir as reiniciações do computador (apenas sysvinit)?"
+
+#~ msgid ""
+#~ "If you choose this option, a system reboot will trigger a restart into a "
+#~ "kernel loaded by kexec instead of going through the full system boot "
+#~ "loader process."
+#~ msgstr ""
+#~ "Se escolher esta opção, reiniciar o sistema irá carregar um kernel usando "
+#~ "o kexec em vez de passar por todo o processo de reinicio e arranque do "
+#~ "computador."
