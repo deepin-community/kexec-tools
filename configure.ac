@@ -4,7 +4,7 @@ dnl
 dnl 
 
 dnl ---Required
-AC_INIT(kexec-tools, 2.0.25)
+AC_INIT(kexec-tools, 2.0.27)
 AC_CONFIG_AUX_DIR(./config)
 AC_CONFIG_HEADERS([include/config.h])
 AC_LANG(C)
@@ -57,6 +57,9 @@ case $target_cpu in
 		;;
 	hppa*)
 		ARCH="hppa"
+		;;
+	loongarch*)
+		ARCH="loongarch"
 		;;
 	* )
 		AC_MSG_ERROR([unsupported architecture $target_cpu])

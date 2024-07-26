@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kexec-tools\n"
 "Report-Msgid-Bugs-To: kexec-tools@packages.debian.org\n"
-"POT-Creation-Date: 2021-07-13 16:56-0600\n"
+"POT-Creation-Date: 2023-10-04 10:16-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,27 +20,12 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../kexec-tools.templates:2001
-msgid "Should kexec-tools handle reboots?"
-msgstr ""
-
-#. Type: boolean
-#. Description
-#: ../kexec-tools.templates:2001
-msgid ""
-"If you choose this option, a system reboot will trigger a restart into a "
-"kernel loaded by kexec instead of going through the full system boot loader "
-"process."
-msgstr ""
-
-#. Type: boolean
-#. Description
-#: ../kexec-tools.templates:3001
 msgid "Read GRUB configuration file to load the kernel?"
 msgstr ""
 
 #. Type: boolean
 #. Description
-#: ../kexec-tools.templates:3001
+#: ../kexec-tools.templates:2001
 msgid ""
 "If you choose this option, kexec will read the GRUB configuration file to "
 "determine which kernel and options to load for kexec reboot, as opposed to "

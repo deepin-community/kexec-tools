@@ -31,7 +31,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kexec-tools 2.0.2-3\n"
 "Report-Msgid-Bugs-To: kexec-tools@packages.debian.org\n"
-"POT-Creation-Date: 2021-07-13 16:56-0600\n"
+"POT-Creation-Date: 2023-10-04 10:16-0600\n"
 "PO-Revision-Date: 2022-01-07 18:51+0100\n"
 "Last-Translator: Camaleón <noelamac@gmail.com>\n"
 "Language-Team: Debian Spanish <debian-l10n-spanish@lists.debian.org>\n"
@@ -43,30 +43,12 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../kexec-tools.templates:2001
-msgid "Should kexec-tools handle reboots?"
-msgstr "¿Debe kexec-tools gestionar los reinicios del sistema ?"
-
-#. Type: boolean
-#. Description
-#: ../kexec-tools.templates:2001
-msgid ""
-"If you choose this option, a system reboot will trigger a restart into a "
-"kernel loaded by kexec instead of going through the full system boot loader "
-"process."
-msgstr ""
-"Si selecciona esta opción, al reiniciar el sistema se realizará un reinicio "
-"en un núcleo cargado por kexec en lugar de iniciar el proceso completo del "
-"cargador de arranque del sistema."
-
-#. Type: boolean
-#. Description
-#: ../kexec-tools.templates:3001
 msgid "Read GRUB configuration file to load the kernel?"
 msgstr "¿Leer el archivo de configuración de GRUB al cargar el kernel?"
 
 #. Type: boolean
 #. Description
-#: ../kexec-tools.templates:3001
+#: ../kexec-tools.templates:2001
 msgid ""
 "If you choose this option, kexec will read the GRUB configuration file to "
 "determine which kernel and options to load for kexec reboot, as opposed to "
@@ -75,3 +57,15 @@ msgstr ""
 "Si selecciona esta opción, kexec leerá el archivo de configuración de GRUB "
 "para determinar el kernel y las opciones que se van a cargar al reiniciar "
 "kexec, en lugar de obtener los valores desde el archivo «/etc/default/kexec»."
+
+#~ msgid "Should kexec-tools handle reboots?"
+#~ msgstr "¿Debe kexec-tools gestionar los reinicios del sistema ?"
+
+#~ msgid ""
+#~ "If you choose this option, a system reboot will trigger a restart into a "
+#~ "kernel loaded by kexec instead of going through the full system boot "
+#~ "loader process."
+#~ msgstr ""
+#~ "Si selecciona esta opción, al reiniciar el sistema se realizará un "
+#~ "reinicio en un núcleo cargado por kexec en lugar de iniciar el proceso "
+#~ "completo del cargador de arranque del sistema."

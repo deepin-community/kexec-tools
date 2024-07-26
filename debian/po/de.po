@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kexec-tools 1:2.0.22-2\n"
 "Report-Msgid-Bugs-To: kexec-tools@packages.debian.org\n"
-"POT-Creation-Date: 2021-07-13 16:56-0600\n"
+"POT-Creation-Date: 2023-10-04 10:16-0600\n"
 "PO-Revision-Date: 2021-07-18 21:24+0200\n"
 "Last-Translator: Helge Kreutzmann <debian@helgefjell.de>\n"
 "Language-Team: German <debian-l10n-german@lists.debian.org>\n"
@@ -20,30 +20,12 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../kexec-tools.templates:2001
-msgid "Should kexec-tools handle reboots?"
-msgstr "Soll »kexec-tools« Neustarts verwalten?"
-
-#. Type: boolean
-#. Description
-#: ../kexec-tools.templates:2001
-msgid ""
-"If you choose this option, a system reboot will trigger a restart into a "
-"kernel loaded by kexec instead of going through the full system boot loader "
-"process."
-msgstr ""
-"Falls Sie diese Option wählen, führt ein Systemneustart zum Start eines von "
-"»kexec« geladenen Kernels, anstatt den gesamten Bootloader-Prozess zu "
-"durchlaufen."
-
-#. Type: boolean
-#. Description
-#: ../kexec-tools.templates:3001
 msgid "Read GRUB configuration file to load the kernel?"
 msgstr "GRUBs Konfigurationsdatei für das Laden des Kernels auslesen?"
 
 #. Type: boolean
 #. Description
-#: ../kexec-tools.templates:3001
+#: ../kexec-tools.templates:2001
 msgid ""
 "If you choose this option, kexec will read the GRUB configuration file to "
 "determine which kernel and options to load for kexec reboot, as opposed to "
@@ -52,3 +34,15 @@ msgstr ""
 "Falls Sie diese Option wählen, wird »kexec« die Konfigurationsdatei von GRUB "
 "auslesen, um den Kernel und die Optionen für das Laden zu ermitteln, anstatt "
 "den Inhalt von /etc/default/kexec zu verwenden."
+
+#~ msgid "Should kexec-tools handle reboots?"
+#~ msgstr "Soll »kexec-tools« Neustarts verwalten?"
+
+#~ msgid ""
+#~ "If you choose this option, a system reboot will trigger a restart into a "
+#~ "kernel loaded by kexec instead of going through the full system boot "
+#~ "loader process."
+#~ msgstr ""
+#~ "Falls Sie diese Option wählen, führt ein Systemneustart zum Start eines "
+#~ "von »kexec« geladenen Kernels, anstatt den gesamten Bootloader-Prozess zu "
+#~ "durchlaufen."

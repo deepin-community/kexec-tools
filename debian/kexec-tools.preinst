@@ -19,12 +19,13 @@ case "$1" in
     ;;
 
     upgrade)
-	# kexec init script runlevels have been updated for systemd for
-	# kexec-tools 1:2.0.7-2. Remove current init scripts if upgrading
-	if dpkg --compare-versions "$2" lt "1:2.0.7-2"; then
-		update-rc.d -f kexec remove
-		update-rc.d -f kexec-load remove
-	fi
+	# kexec-tools does not use init or systemd services any more.
+	# Automatic loading of kexec image has been taken over by systemctl
+	# and may be assumed by logind in near future. kexec-tools package
+	# now provides a script to load a kexec image which can be used
+	# together with systemd or logind
+	update-rc.d -f kexec remove
+	update-rc.d -f kexec-load remove
     ;;
 
     abort-upgrade)
