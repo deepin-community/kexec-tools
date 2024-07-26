@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <libfdt.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -910,9 +911,9 @@ int file_types = sizeof(file_type) / sizeof(file_type[0]);
 
 void arch_usage(void)
 {
-	fprintf(stderr, "     --elf64-core-headers Prepare core headers in ELF64 format\n");
-	fprintf(stderr, "     --dt-no-old-root Do not reuse old kernel root= param.\n" \
-	                "                      while creating flatten device tree.\n");
+	printf("     --elf64-core-headers Prepare core headers in ELF64 format\n");
+	printf("     --dt-no-old-root Do not reuse old kernel root= param.\n"
+	       "                      while creating flatten device tree.\n");
 }
 
 struct arch_options_t arch_options = {
@@ -966,4 +967,15 @@ int arch_compat_trampoline(struct kexec_info *UNUSED(info))
 
 void arch_update_purgatory(struct kexec_info *UNUSED(info))
 {
+}
+
+int arch_do_exclude_segment(struct kexec_info *info, struct kexec_segment *segment)
+{
+	if (info->elfcorehdr == (unsigned long) segment->mem)
+		return 1;
+
+	if (segment->buf && fdt_magic(segment->buf) == FDT_MAGIC)
+		return 1;
+
+	return 0;
 }

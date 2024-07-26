@@ -31,6 +31,10 @@
 #include <sys/mount.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifndef HAVE_MEMFD_CREATE
+#include <linux/memfd.h>
+#include <sys/syscall.h>
+#endif
 #include <sys/reboot.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -58,6 +62,8 @@
 
 unsigned long long mem_min = 0;
 unsigned long long mem_max = ULONG_MAX;
+unsigned long elfcorehdrsz = 0;
+int do_hotplug = 0;
 static unsigned long kexec_flags = 0;
 /* Flags for kexec file (fd) based syscall */
 static unsigned long kexec_file_flags = 0;
@@ -489,7 +495,7 @@ static int add_backup_segments(struct kexec_info *info,
 	return 0;
 }
 
-static char *slurp_fd(int fd, const char *filename, off_t size, off_t *nread)
+char *slurp_fd(int fd, const char *filename, off_t size, off_t *nread)
 {
 	char *buf;
 	off_t progress;
@@ -638,6 +644,13 @@ char *slurp_decompress_file(const char *filename, off_t *r_size)
 	return kernel_buf;
 }
 
+#ifndef HAVE_MEMFD_CREATE
+static int memfd_create(const char *name, unsigned int flags)
+{
+	return syscall(SYS_memfd_create, name, flags);
+}
+#endif
+
 static int copybuf_memfd(const char *kernel_buf, size_t size)
 {
 	int fd, count;
@@ -687,6 +700,17 @@ static void update_purgatory(struct kexec_info *info)
 		if (info->segment[i].mem == (void *)info->rhdr.rel_addr) {
 			continue;
 		}
+
+		/*
+		 * Let architecture decide which segments to exclude from checksum
+		 * if hotplug support is enabled.
+		 */
+		if (do_hotplug && arch_do_exclude_segment(info, &info->segment[i])) {
+			dbgprintf("Skipping segment mem: 0x%lx from SHA calculation\n",
+				  (unsigned long)info->segment[i].mem);
+			continue;
+		}
+
 		sha256_update(&ctx, info->segment[i].buf,
 			      info->segment[i].bufsz);
 		nullsz = info->segment[i].memsz - info->segment[i].bufsz;
@@ -1069,6 +1093,9 @@ void usage(void)
 	       "                      back to the compatibility syscall when file based\n"
 	       "                      syscall is not supported or the kernel did not\n"
 	       "                      understand the image (default)\n"
+	       " --hotplug            Do in-kernel update of kexec segments on CPU/Memory\n"
+	       "                      hot add/remove events, avoiding the need to reload\n"
+	       "                      kdump kernel on online/offline events.\n"
 	       " -d, --debug          Enable debugging to help spot a failure.\n"
 	       " -S, --status         Return 1 if the type (by default crash) is loaded,\n"
 	       "                      0 if not.\n"
@@ -1397,6 +1424,30 @@ static int do_kexec_file_load(int fileind, int argc, char **argv,
 	return ret;
 }
 
+/*
+ * Hotplug support for x86 in the kernel was added with the
+ * `KEXEC_UPDATE_ELFCOREHDR` kexec bit, and later it was generalized
+ * with the `KEXEC_CRASH_HOTPLUG_SUPPORT` kexec bit.
+ *
+ * Passing the `KEXEC_CRASH_HOTPLUG_SUPPORT` kexec bit to kernel
+ * versions 6.5 to 6.9 on x86 with the `kexec_load` system call will
+ * fail with `-EINVAL`.
+ *
+ * So for now, pass `KEXEC_UPDATE_ELFCOREHDR` for x86, and for other
+ * architectures, use the `KEXEC_CRASH_HOTPLUG_SUPPORT` kexec bit. But
+ * in the future, we can decide to get rid of `KEXEC_UPDATE_ELFCOREHDR`.
+ *
+ * NOTE: Xen KEXEC_LIVE_UPDATE and KEXEC_UPDATE_ELFCOREHDR collide
+ */
+static inline unsigned long get_hotplug_kexec_flag(void)
+{
+#if defined(__i386__) || defined(__x86_64__)
+		return KEXEC_UPDATE_ELFCOREHDR;
+#else
+		return KEXEC_CRASH_HOTPLUG_SUPPORT;
+#endif
+}
+
 static void print_crashkernel_region_size(void)
 {
 	uint64_t start = 0, end = 0;
@@ -1455,6 +1506,7 @@ int main(int argc, char *argv[])
 			return 0;
 		case OPT_DEBUG:
 			kexec_debug = 1;
+			kexec_file_flags |= KEXEC_FILE_DEBUG;
 			break;
 		case OPT_NOIFDOWN:
 			skip_ifdown = 1;
@@ -1579,6 +1631,9 @@ int main(int argc, char *argv[])
 		case OPT_PRINT_CKR_SIZE:
 			print_crashkernel_region_size();
 			return 0;
+		case OPT_HOTPLUG:
+			do_hotplug = 1;
+			break;
 		default:
 			break;
 		}
@@ -1625,6 +1680,25 @@ int main(int argc, char *argv[])
 		die("--load-live-update can only be used with xen\n");
 	}
 
+	if (do_hotplug) {
+		const char *ces = "/sys/kernel/crash_elfcorehdr_size";
+		char *buf, *endptr = NULL;
+		off_t nread = 0;
+		buf = slurp_file_len(ces, sizeof(buf)-1, &nread);
+		if (buf) {
+			if (buf[nread-1] == '\n')
+				buf[nread-1] = '\0';
+			elfcorehdrsz = strtoul(buf, &endptr, 0);
+		}
+		if (!elfcorehdrsz || (endptr && *endptr != '\0'))
+			die("Path %s does not exist, the kernel needs CONFIG_CRASH_HOTPLUG\n", ces);
+		dbgprintf("ELFCOREHDR_SIZE %lu\n", elfcorehdrsz);
+		/* Indicate to the kernel it is ok to modify the relevant kexec segments */
+
+		kexec_flags |= get_hotplug_kexec_flag();
+
+	}
+
 	fileind = optind;
 	/* Reset getopt for the next pass; called in other source modules */
 	opterr = 1;
@@ -1641,6 +1715,10 @@ int main(int argc, char *argv[])
 				return 1;
 			}
 		}
+	}
+	if (xen_present()) {
+		do_kexec_file_syscall = 0;
+		do_kexec_fallback = 0;
 	}
 	if (do_kexec_file_syscall) {
 		if (do_load_jump_back_helper && !do_kexec_fallback)

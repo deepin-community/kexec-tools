@@ -4,7 +4,7 @@ dnl
 dnl 
 
 dnl ---Required
-AC_INIT(kexec-tools, 2.0.27)
+AC_INIT(kexec-tools, 2.0.29)
 AC_CONFIG_AUX_DIR(./config)
 AC_CONFIG_HEADERS([include/config.h])
 AC_LANG(C)
@@ -207,6 +207,9 @@ if test "$ac_cv_lib_xenctrl_xc_kexec_load" = yes ; then
 			[The kexec_status call is available]),
 		AC_MSG_NOTICE([The kexec_status call is not available]))
 fi
+
+dnl Check if libc has the memfd_create() syscall wrapper
+AC_CHECK_FUNCS([memfd_create])
 
 dnl ---Sanity checks
 if test "$CC"      = "no"; then AC_MSG_ERROR([cc not found]); fi

@@ -170,6 +170,7 @@ struct kexec_info {
 	int command_line_len;
 
 	int skip_checks;
+	unsigned long elfcorehdr;
 };
 
 struct arch_map_entry {
@@ -232,7 +233,8 @@ extern int file_types;
 #define OPT_PRINT_CKR_SIZE	262
 #define OPT_LOAD_LIVE_UPDATE	263
 #define OPT_EXEC_LIVE_UPDATE	264
-#define OPT_MAX			265
+#define OPT_HOTPLUG		        265
+#define OPT_MAX		266
 #define KEXEC_OPTIONS \
 	{ "help",		0, 0, OPT_HELP }, \
 	{ "version",		0, 0, OPT_VERSION }, \
@@ -259,6 +261,7 @@ extern int file_types;
 	{ "debug",		0, 0, OPT_DEBUG }, \
 	{ "status",		0, 0, OPT_STATUS }, \
 	{ "print-ckr-size",     0, 0, OPT_PRINT_CKR_SIZE }, \
+	{ "hotplug",		    0, 0, OPT_HOTPLUG }, \
 
 #define KEXEC_OPT_STR "h?vdfixyluet:pscaS"
 
@@ -267,6 +270,7 @@ extern void die(const char *fmt, ...)
 	__attribute__ ((format (printf, 1, 2)));
 extern void *xmalloc(size_t size);
 extern void *xrealloc(void *ptr, size_t size);
+extern char *slurp_fd(int fd, const char *filename, off_t size, off_t *nread);
 extern char *slurp_file(const char *filename, off_t *r_size);
 extern char *slurp_file_mmap(const char *filename, off_t *r_size);
 extern char *slurp_file_len(const char *filename, off_t size, off_t *nread);
@@ -296,10 +300,15 @@ extern int ifdown(void);
 extern char purgatory[];
 extern size_t purgatory_size;
 
+extern unsigned long elfcorehdrsz;
+extern int do_hotplug;
+
 #define BOOTLOADER "kexec"
 #define BOOTLOADER_VERSION PACKAGE_VERSION
 
 void arch_usage(void);
+/* Return non-zero if segment needs to be excluded from SHA calculation, else 0. */
+int arch_do_exclude_segment(struct kexec_info *info, struct kexec_segment *segment);
 int arch_process_options(int argc, char **argv);
 int arch_compat_trampoline(struct kexec_info *info);
 void arch_update_purgatory(struct kexec_info *info);
