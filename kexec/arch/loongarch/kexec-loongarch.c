@@ -165,6 +165,7 @@ int get_memory_ranges(struct memory_range **range, int *ranges,
 
 struct file_type file_type[] = {
 	{"elf-loongarch", elf_loongarch_probe, elf_loongarch_load, elf_loongarch_usage},
+	{"pez-loongarch", pez_loongarch_probe, pez_loongarch_load, pez_loongarch_usage},
 	{"pei-loongarch", pei_loongarch_probe, pei_loongarch_load, pei_loongarch_usage},
 };
 int file_types = sizeof(file_type) / sizeof(file_type[0]);
@@ -264,9 +265,13 @@ unsigned long loongarch_locate_kernel_segment(struct kexec_info *info)
 			hole = ULONG_MAX;
 		}
 	} else {
-		hole = locate_hole(info,
-			loongarch_mem.text_offset + loongarch_mem.image_size,
-			MiB(1), 0, ULONG_MAX, 1);
+		unsigned long hole_min;
+		unsigned long hole_max;
+
+		hole_min = loongarch_mem.text_offset;
+		hole_max = hole_min + loongarch_mem.image_size;
+		hole = locate_hole(info, loongarch_mem.image_size,
+			MiB(1), hole_min, hole_max, 1);
 
 		if (hole == ULONG_MAX)
 			dbgprintf("%s: locate_hole failed\n", __func__);
@@ -284,6 +289,7 @@ int loongarch_load_other_segments(struct kexec_info *info, unsigned long hole_mi
 	unsigned long initrd_min, hole_max;
 	char *initrd_buf = NULL;
 	unsigned long pagesize = getpagesize();
+	int i;
 
 	if (arch_options.command_line) {
 		if (strlen(arch_options.command_line) >
@@ -321,15 +327,17 @@ int loongarch_load_other_segments(struct kexec_info *info, unsigned long hole_mi
 		cmdline_add_elfcorehdr(cmdline, elfcorehdr_mem.start,
 				elfcorehdr_mem.end - elfcorehdr_mem.start + 1);
 
-		cmdline_add_mem(cmdline, crash_reserved_mem[usablemem_rgns.size - 1].start,
-			crash_reserved_mem[usablemem_rgns.size - 1].end -
-			crash_reserved_mem[usablemem_rgns.size - 1].start + 1);
+		for(i = 0;i < usablemem_rgns.size; i++) {
+			cmdline_add_mem(cmdline, crash_reserved_mem[i].start,
+			crash_reserved_mem[i].end -
+			crash_reserved_mem[i].start + 1);
+		}
 	}
 
 	cmdline[sizeof(cmdline) - 1] = 0;
 	add_buffer(info, cmdline, sizeof(cmdline), sizeof(cmdline),
 		sizeof(void *), _ALIGN_UP(hole_min, getpagesize()),
-		0xffffffff, 1);
+		hole_max, 1);
 
 	dbgprintf("%s:%d: command_line: %s\n", __func__, __LINE__, cmdline);
 
@@ -372,4 +380,9 @@ unsigned long add_buffer(struct kexec_info *info, const void *buf,
 {
 	return add_buffer_phys_virt(info, buf, bufsz, memsz, buf_align,
 				    buf_min, buf_max, buf_end, 1);
+}
+
+int arch_do_exclude_segment(struct kexec_info *UNUSED(info), struct kexec_segment *UNUSED(segment))
+{
+	return 0;
 }

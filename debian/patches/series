@@ -7,4 +7,3 @@ linker-option.patch
 powerpcspe_support.patch
 vmcore-dmesg_man_page_fix.patch
 systemd-support.patch
-328de8e00e298f00d7ba6b25dc3950147e9642e6.patch
