@@ -7,3 +7,4 @@ linker-option.patch
 powerpcspe_support.patch
 vmcore-dmesg_man_page_fix.patch
 systemd-support.patch
+riscv-support.patch
