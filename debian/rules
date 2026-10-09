@@ -5,6 +5,14 @@
 # dh-make output file, you may use that output file without restriction.
 # This special exception was added by Craig Small in version 0.37 of dh-make.
 
+include /usr/share/dpkg/architecture.mk
+
+ifeq ($(DEB_HOST_ARCH),loong64)
+	ZSTD_CONFIGURE = --with-zstd
+else
+	ZSTD_CONFIGURE = --without-zstd
+endif
+
 BUILD_DATE = $(shell dpkg-parsechangelog -S Date | LC_ALL=C date -u +'%d %B %Y' -f -)
 export BUILD_DATE
 
@@ -27,7 +35,7 @@ configure-stamp:
 	dh_testdir
 	dh_update_autotools_config
 	dh_autoreconf
-	CPPFLAGS="$(shell dpkg-buildflags --get CPPFLAGS)" CFLAGS="$(shell dpkg-buildflags --get CFLAGS)" LDFLAGS="$(shell dpkg-buildflags --get LDFLAGS)" dh_auto_configure -- --prefix=/usr --exec-prefix=/usr --sbindir=/usr/sbin --mandir=/usr/share/man --datadir=/usr/share
+	CPPFLAGS="$(shell dpkg-buildflags --get CPPFLAGS)" CFLAGS="$(shell dpkg-buildflags --get CFLAGS)" LDFLAGS="$(shell dpkg-buildflags --get LDFLAGS)" dh_auto_configure -- --prefix=/usr --exec-prefix=/usr --sbindir=/usr/sbin --mandir=/usr/share/man --datadir=/usr/share $(ZSTD_CONFIGURE)
 	touch configure-stamp
 
 build: build-arch build-indep

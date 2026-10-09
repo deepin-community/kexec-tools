@@ -8,3 +8,5 @@ powerpcspe_support.patch
 vmcore-dmesg_man_page_fix.patch
 systemd-support.patch
 riscv-support.patch
+loongarch-command-line.patch
+zstd-pe-zboot.patch

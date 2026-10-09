@@ -1,0 +1,62 @@
+Description: Use the kernel LoongArch command-line limit and check append bounds.
+Author: Ming Wang <wangming01@loongson.cn>
+Origin: other, local LoongArch adaptation
+Forwarded: not-needed
+Last-Update: 2026-10-09
+
+diff --git a/kexec/arch/loongarch/crashdump-loongarch.h b/kexec/arch/loongarch/crashdump-loongarch.h
+index 25ff24b3077e..0004611a4919 100644
+--- a/kexec/arch/loongarch/crashdump-loongarch.h
++++ b/kexec/arch/loongarch/crashdump-loongarch.h
+@@ -20,7 +20,6 @@ int get_crash_kernel_load_range(uint64_t *start, uint64_t *end);
+ /* crash dump kernel support at most two regions, low_region and high region. */
+ #define CRASH_MAX_RESERVED_RANGES      2
+ 
+-#define COMMAND_LINE_SIZE	512
+ 
+ extern struct arch_options_t arch_options;
+ #endif /* CRASHDUMP_LOONGARCH_H */
+diff --git a/kexec/arch/loongarch/kexec-loongarch.c b/kexec/arch/loongarch/kexec-loongarch.c
+index ea0c316506a1..be57a7093a92 100644
+--- a/kexec/arch/loongarch/kexec-loongarch.c
++++ b/kexec/arch/loongarch/kexec-loongarch.c
+@@ -292,14 +292,16 @@ int loongarch_load_other_segments(struct kexec_info *info, unsigned long hole_mi
+ 	int i;
+ 
+ 	if (arch_options.command_line) {
+-		if (strlen(arch_options.command_line) >
+-		    sizeof(cmdline) - 1) {
++		size_t used = strlen(cmdline);
++		size_t append_len = strlen(arch_options.command_line);
++
++		if (append_len >= sizeof(cmdline) - used) {
+ 			fprintf(stderr,
+ 				"Kernel command line too long for kernel!\n");
+ 			return EFAILED;
+ 		}
+ 
+-		strncat(cmdline, arch_options.command_line, sizeof(cmdline) - 1);
++		memcpy(cmdline + used, arch_options.command_line, append_len + 1);
+ 	}
+ 
+ 	/* Put the other segments after the image. */
+diff --git a/kexec/arch/loongarch/kexec-loongarch.h b/kexec/arch/loongarch/kexec-loongarch.h
+index 2c7624f2fd3a..ca9e11726200 100644
+--- a/kexec/arch/loongarch/kexec-loongarch.h
++++ b/kexec/arch/loongarch/kexec-loongarch.h
+@@ -2,6 +2,7 @@
+ #define KEXEC_LOONGARCH_H
+ 
+ #include <sys/types.h>
++#include <asm/setup.h>
+ 
+ #include "image-header.h"
+ 
+@@ -13,7 +14,6 @@
+ 
+ #define CORE_TYPE_ELF64 1
+ 
+-#define COMMAND_LINE_SIZE 512
+ 
+ #define KiB(x) ((x) * 1024UL)
+ #define MiB(x) (KiB(x) * 1024UL)
