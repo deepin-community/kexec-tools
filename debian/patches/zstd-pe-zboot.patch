@@ -1,0 +1,318 @@
+Description: Backport zstd decoding and enable it for PE ZBOOT images.
+Author: Ming Wang <wangming01@loongson.cn>
+Origin: other, adapted from upstream kexec-tools commits
+ 60ce9bdf0e5cf37ee3db3586ffc8b17f8cbb5aa3,
+ daa29443819d3045338792b5ba950ed90e79d7a5 and
+ a7fcd424c4c80dea5a2fd5ffa274ffeb8129c790
+Forwarded: not-needed
+Last-Update: 2026-10-09
+
+diff --git a/configure.ac b/configure.ac
+index 46da85fd5c82..863b486dd402 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -106,6 +106,9 @@ AC_ARG_WITH([zlib], AC_HELP_STRING([--without-zlib],[disable zlib support]),
+ AC_ARG_WITH([lzma], AC_HELP_STRING([--without-lzma],[disable lzma support]),
+ 	[ with_lzma="$withval"], [ with_lzma=yes ] )
+ 
++AC_ARG_WITH([zstd], AC_HELP_STRING([--without-zstd],[disable zstd support]),
++	[ with_zstd="$withval"], [ with_zstd=yes ] )
++
+ AC_ARG_WITH([xen], AC_HELP_STRING([--without-xen],
+ 	[disable extended xen support]), [ with_xen="$withval"], [ with_xen=yes ] )
+ 
+@@ -180,6 +183,13 @@ if test "$with_lzma" = yes ; then
+ 		AC_MSG_NOTICE([lzma support disabled]))])
+ fi
+ 
++dnl See if I have a usable copy of zstd available
++if test "$with_zstd" = yes ; then
++	AC_CHECK_HEADER(zstd.h,
++		[AC_CHECK_LIB(zstd, ZSTD_decompress, ,
++		AC_MSG_NOTICE([zstd support disabled]))])
++fi
++
+ dnl find Xen control stack libraries
+ if test "$with_xen" = yes ; then
+ 	AC_CHECK_HEADER(xenctrl.h,
+diff --git a/kexec/Makefile b/kexec/Makefile
+index 11682bfa7898..087c54833185 100644
+--- a/kexec/Makefile
++++ b/kexec/Makefile
+@@ -25,6 +25,7 @@ KEXEC_SRCS_base += kexec/crashdump-xen.c
+ KEXEC_SRCS_base += kexec/phys_arch.c
+ KEXEC_SRCS_base += kexec/lzma.c
+ KEXEC_SRCS_base += kexec/zlib.c
++KEXEC_SRCS_base += kexec/zstd.c
+ KEXEC_SRCS_base += kexec/kexec-xen.c
+ KEXEC_SRCS_base += kexec/symbols.c
+ 
+@@ -36,6 +37,7 @@ dist += kexec/Makefile						\
+ 	kexec/kexec-elf-boot.h					\
+ 	kexec/kexec-elf.h kexec/kexec-sha256.h			\
+ 	kexec/kexec-zlib.h kexec/kexec-lzma.h			\
++	kexec/kexec-zstd.h					\
+ 	kexec/kexec-xen.h 					\
+ 	kexec/kexec-syscall.h kexec/kexec.h kexec/kexec.8
+ 
+diff --git a/kexec/kexec-pe-zboot.c b/kexec/kexec-pe-zboot.c
+index 3abd17d9fe59..8b8923a9dc54 100644
+--- a/kexec/kexec-pe-zboot.c
++++ b/kexec/kexec-pe-zboot.c
+@@ -59,8 +59,16 @@ int pez_prepare(const char *crude_buf, off_t buf_sz, int *kernel_fd,
+ 	 * algorithms than are supported here, error out if we detect that.
+ 	 */
+ 	if (memcmp(&z->compress_type, "gzip", 4) &&
+-	    memcmp(&z->compress_type, "lzma", 4)) {
+-		dbgprintf("%s: kexec can only decompress gziped and lzma images.\n", __func__);
++	    memcmp(&z->compress_type, "lzma", 4)
++#ifdef HAVE_LIBZSTD
++	    && memcmp(&z->compress_type, "zstd", 4)
++#endif
++	   ) {
++#ifdef HAVE_LIBZSTD
++		dbgprintf("%s: kexec can only decompress gziped, lzma and zstd images.\n", __func__);
++#else
++		dbgprintf("%s: kexec can only decompress gziped and lzma images.\n", __func__);
++#endif
+ 		return -1;
+ 	}
+ 
+diff --git a/kexec/kexec-zstd.h b/kexec/kexec-zstd.h
+new file mode 100644
+index 000000000000..c5dbb246f904
+--- /dev/null
++++ b/kexec/kexec-zstd.h
+@@ -0,0 +1,7 @@
++#ifndef __KEXEC_ZSTD_H
++#define __KEXEC_ZSTD_H
++
++#include <sys/types.h>
++
++char *zstd_decompress_file(const char *filename, off_t *r_size);
++#endif /* __KEXEC_ZSTD_H */
+diff --git a/kexec/kexec.c b/kexec/kexec.c
+index 7c614b08b6c5..bc6ba1153ded 100644
+--- a/kexec/kexec.c
++++ b/kexec/kexec.c
+@@ -55,6 +55,7 @@
+ #include "kexec-sha256.h"
+ #include "kexec-zlib.h"
+ #include "kexec-lzma.h"
++#include "kexec-zstd.h"
+ #include <arch/options.h>
+ 
+ #define KEXEC_LOADED_PATH "/sys/kernel/kexec_loaded"
+@@ -636,11 +637,13 @@ char *slurp_decompress_file(const char *filename, off_t *r_size)
+ 	char *kernel_buf;
+ 
+ 	kernel_buf = zlib_decompress_file(filename, r_size);
+-	if (!kernel_buf) {
++	if (!kernel_buf)
++		kernel_buf = zstd_decompress_file(filename, r_size);
++	if (!kernel_buf)
+ 		kernel_buf = lzma_decompress_file(filename, r_size);
+-		if (!kernel_buf)
+-			return slurp_file(filename, r_size);
+-	}
++	if (!kernel_buf)
++		return slurp_file(filename, r_size);
++
+ 	return kernel_buf;
+ }
+ 
+diff --git a/kexec/zstd.c b/kexec/zstd.c
+new file mode 100644
+index 000000000000..eaa76b9ec37b
+--- /dev/null
++++ b/kexec/zstd.c
+@@ -0,0 +1,189 @@
++#include "kexec-zstd.h"
++#include "kexec.h"
++
++#include "config.h"
++
++#ifdef HAVE_LIBZSTD
++#include <stdio.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <errno.h>
++#include <limits.h>
++#include <stdbool.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <ctype.h>
++#include <zstd.h>
++
++
++/*
++ * Reimplementation of private function available if zstd is
++ * statically linked. Remove when it becomes public.
++ */
++__attribute__((weak))
++unsigned ZSTD_isFrame(const void* buffer, size_t size)
++{
++	uint8_t *buf = (uint8_t *)buffer;
++	/* Magic zstd frame header value */
++	if ((buf[0] == 0x28) &&
++	    (buf[1] == 0xB5) &&
++	    (buf[2] == 0x2F) &&
++	    (buf[3] == 0xFD))
++		return 1;
++
++	return 0;
++}
++
++/*
++ * A guess at the max compression ratio for buffer overallocation.
++ * Real values are frequently around 4:1, if this is wrong
++ * it simply results in buffer reallocation and the decompression
++ * operation being restarted from where it stopped.
++ */
++#define EXPECTED_RATIO 8
++
++/*
++ * This supports the streaming compression mode the kernel uses
++ * that can result in multiple zstd frames comprising a single
++ * compressed image. In order too be a bit more efficient than
++ * the libz/lzma implementations, we attempt to discover the input
++ * and output image sizes before performing the decompression.
++ * But, in streaming mode the first frame may not have a length
++ * or it seems the length could be incorrect if multiple frames
++ * are appended together. So, its written with buffer resize logic
++ * but a guess at the compression ratio is made to avoid the resize/copy
++ * operation. Ideally this code efficiently allocates the
++ * correct input buffer, and no more than 2-3x the output buffer
++ * size so that it can perform the decompress operation with a
++ * single decompress call.
++ */
++char *zstd_decompress_file(const char *filename, off_t *r_size)
++{
++	void *cBuff = NULL;
++	ZSTD_DCtx* dctx = NULL;
++	FILE *fp = NULL; /* use c streams to match gzip/lzma logic */
++	struct stat fp_stats;
++	uint8_t magic[4];
++	size_t ret;
++
++	ZSTD_outBuffer output = { NULL, 0, 0 };
++	ZSTD_inBuffer input = { NULL, 0, 0 };
++
++	dbgprintf("Try zstd decompression.\n");
++
++	*r_size = 0;
++	if (!filename) {
++		return NULL;
++	}
++	if (stat(filename, &fp_stats)) {
++		dbgprintf("Cannot stat `%s'\n", filename);
++		return NULL;
++	}
++	if (fp_stats.st_size < sizeof(magic)) {
++		dbgprintf("short file\n");
++		return NULL;
++	}
++	input.size = fp_stats.st_size;
++
++	fp = fopen(filename, "rb");
++	if (fp == 0) {
++		dbgprintf("Cannot open `%s'\n", filename);
++		goto fail;
++	}
++	/* before we read the whole buffer see if this looks like a zstd frame */
++	if (fread(&magic, 1, sizeof(magic), fp) != sizeof(magic)) {
++		dbgprintf("Unable to read zstd header\n");
++		goto fail;
++	}
++
++	if (!ZSTD_isFrame((void*)&magic, sizeof(magic))) {
++		dbgprintf("Not zstd compressed\n");
++		goto fail;
++	}
++
++	cBuff = xmalloc(input.size);
++	input.src = cBuff; /* use cBuff ptr to avoid const/mismatches */
++	rewind(fp);
++	if (fread(cBuff, 1, input.size, fp) != input.size) {
++		dbgprintf("Unable to read compressed data\n");
++		goto fail;
++	}
++	fclose(fp);
++	fp = NULL;
++
++
++	output.size = ZSTD_getFrameContentSize(input.src, input.size);
++	if (output.size == ZSTD_CONTENTSIZE_ERROR) {
++		dbgprintf("not compressed by zstd\n");
++		goto fail;
++	}
++
++	if (output.size == ZSTD_CONTENTSIZE_UNKNOWN) {
++		dbgprintf("original zstd size unknown!\n");
++		/*
++		 * The compressed size is an optional field in the header
++		 * So we guess at the compression ratio to avoid reallocating
++		 * the buffer, but this can fail so we still have code to
++		 * handle that case.
++		 */
++		if (input.size > SIZE_MAX / EXPECTED_RATIO)
++			goto fail;
++		output.size = input.size * EXPECTED_RATIO;
++	}
++
++	/* A valid empty first frame must still leave room for later frames. */
++	if (!output.size)
++		output.size = ZSTD_DStreamOutSize();
++	output.dst = xmalloc(output.size);
++
++	dctx = ZSTD_createDCtx();
++	if (dctx == NULL) {
++		dbgprintf("zstd context allocation error\n");
++		goto fail;
++	}
++
++	do {
++		if (output.pos == output.size) {
++			if (output.size > SIZE_MAX / 2)
++				goto fail;
++			output.size <<= 1;
++			output.dst = xrealloc(output.dst, output.size);
++		}
++
++		ret = ZSTD_decompressStream(dctx, &output , &input);
++		if (ZSTD_isError(ret)) {
++			dbgprintf("zstd error %s\n", ZSTD_getErrorName(ret));
++			goto fail;
++		}
++		dbgprintf("zstd decompressed input=%ld to output=%ld\n", input.pos, output.pos);
++
++	} while ((input.pos < input.size) || ret);
++
++	free(cBuff);
++	ZSTD_freeDCtx(dctx);
++
++	*r_size = output.pos;
++
++	return output.dst;
++
++fail:
++	if (fp)
++		fclose(fp);
++	if (dctx)
++		ZSTD_freeDCtx(dctx);
++	if (output.dst)
++		free(output.dst);
++	if (cBuff)
++		free(cBuff);
++
++	return NULL;
++
++}
++#else
++
++char *zstd_decompress_file(const char *filename, off_t *r_size)
++{
++	return NULL;
++}
++#endif

@@ -1,3 +1,13 @@
+kexec-tools (1:2.0.29-0deepin3) unstable; urgency=medium
+
+  * Honor the kernel LoongArch command-line limit with safe append bounds.
+  * Backport zstd decompression and PE ZBOOT support.
+  * Add the loong64 libzstd build dependency.
+  * Enable Zstd only for loong64 packages and gate PE format support.
+  * Handle empty first Zstd frames and check buffer growth overflow.
+
+ -- Ming Wang <wangming01@loongson.cn>  Fri, 09 Oct 2026 11:40:00 +0800
+
 kexec-tools (1:2.0.29-0deepin2) unstable; urgency=medium
 
   * Support riscv.

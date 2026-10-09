@@ -3,7 +3,7 @@ Section: admin
 Homepage: https://git.kernel.org/pub/scm/utils/kernel/kexec/kexec-tools.git/
 Priority: optional
 Maintainer: Khalid Aziz <khalid@debian.org>
-Build-Depends: debhelper (>= 10.0.0),  debhelper-compat (= 13), gnu-efi (>=3.0a-4)[ia64], libz-dev[arm64 ia64], po-debconf, libxen-dev[amd64 arm64 armhf]
+Build-Depends: debhelper (>= 10.0.0),  debhelper-compat (= 13), gnu-efi (>=3.0a-4)[ia64], libz-dev[arm64 ia64], po-debconf, libzstd-dev [loong64], libxen-dev[amd64 arm64 armhf]
 Standards-Version: 4.5.1.0
 Rules-Requires-Root: no
 
